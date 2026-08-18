@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import json
 import os
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Any, Callable, Iterable
+from typing import Any
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
@@ -17,7 +18,7 @@ class SupabaseSourceConfig:
     secret_key: str
 
     @classmethod
-    def from_env(cls) -> "SupabaseSourceConfig":
+    def from_env(cls) -> SupabaseSourceConfig:
         return cls(
             url=os.getenv("SUPABASE_URL", "").strip().rstrip("/"),
             secret_key=(
@@ -150,11 +151,11 @@ def _fetch_learning_rows(config: SupabaseSourceConfig) -> list[dict[str, Any]]:
         headers["Authorization"] = f"Bearer {config.secret_key}"
 
     request = Request(endpoint, method="GET", headers=headers)
-    with urlopen(request, timeout=20) as response:  # noqa: S310 - URL is operator-configured.
+    with urlopen(request, timeout=20) as response:
         payload = response.read().decode("utf-8")
     data = json.loads(payload)
     if not isinstance(data, list):
-        raise RuntimeError("Unexpected Supabase response while reading learner state")
+        raise TypeError("Unexpected Supabase response while reading learner state")
     return [row for row in data if isinstance(row, dict)]
 
 

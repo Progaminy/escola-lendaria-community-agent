@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from contextlib import asynccontextmanager
 import asyncio
 import os
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse

@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+import re
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
-import re
 from typing import Any
 
 VALID_LEVELS = {"low", "medium", "high"}
@@ -60,7 +60,7 @@ def _days_since(iso_value: str | None) -> int | None:
 
 
 def _extract_attempts(details: str) -> int | None:
-    match = re.search(r"\b(\d{1,2})\s+(?:times|attempts?|vezes|tentativas?)\b", details, re.I)
+    match = re.search(r"\b(\d{1,2})\s+(?:times|attempts?|vezes|tentativas?)\b", details, re.IGNORECASE)
     if match:
         return int(match.group(1))
     return None

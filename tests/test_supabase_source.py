@@ -2,7 +2,12 @@ import os
 from pathlib import Path
 
 from community_agent.db import connect, init_db
-from community_agent.supabase_source import SupabaseSourceConfig, derive_learner_record, source_status_data, sync_learner_rows
+from community_agent.supabase_source import (
+    SupabaseSourceConfig,
+    derive_learner_record,
+    source_status_data,
+    sync_learner_rows,
+)
 
 
 def sample_row():

@@ -5,7 +5,7 @@ import os
 import uuid
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Any, Iterable
+from typing import Any
 
 from .db import connect, init_db
 from .service import create_human_followup_data, record_signal_data
@@ -350,7 +350,7 @@ def run_community_monitor(now: datetime | None = None) -> dict[str, Any]:
             from .supabase_source import sync_from_supabase
 
             source_sync = sync_from_supabase()
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - source outage must not stop monitor
             source_sync = {"ok": False, "source": "supabase", "error": str(exc)}
     now = (now or datetime.now(timezone.utc)).astimezone(timezone.utc)
     run_id = str(uuid.uuid4())
@@ -426,8 +426,10 @@ def run_community_monitor(now: datetime | None = None) -> dict[str, Any]:
                 VALUES (NULL, 'autonomous_monitor_run', ?)
                 """,
                 (
-                    f"scanned={len(learners)} | active={active_conditions} | "
-                    f"new={new_alerts} | cleared={cleared_conditions} | risk={highest_risk}",
+                    (
+                        f"scanned={len(learners)} | active={active_conditions} | "
+                        f"new={new_alerts} | cleared={cleared_conditions} | risk={highest_risk}"
+                    ),
                 ),
             )
         return {
@@ -503,7 +505,7 @@ async def autonomous_monitor_loop() -> None:
         await asyncio.sleep(interval)
         try:
             run_community_monitor()
-        except Exception as exc:  # pragma: no cover - runtime resilience path
+        except Exception as exc:  # noqa: BLE001  # pragma: no cover - resilience path
             init_db()
             with connect() as conn:
                 conn.execute(

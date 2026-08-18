@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from typing import Any
 import uuid
+from typing import Any
 
 from .db import connect, init_db, row_to_dict
-from .policy import EventAssessment, VALID_LEVELS, assess_event
+from .policy import VALID_LEVELS, EventAssessment, assess_event
 
 
 def get_learner_context_data(learner_id: str) -> dict[str, Any]:

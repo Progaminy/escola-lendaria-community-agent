@@ -2,11 +2,11 @@ from __future__ import annotations
 
 import json
 import os
-from pathlib import Path
 import tempfile
+from pathlib import Path
 
-from .seed_demo import seed
 from .monitor import monitoring_state_data, run_community_monitor
+from .seed_demo import seed
 from .service import community_digest_data, list_open_followups_data, process_event_locally
 
 

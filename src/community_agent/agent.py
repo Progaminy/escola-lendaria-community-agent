@@ -28,6 +28,7 @@ def _build_strands_agent():
     # Lazy import keeps the local product runnable before AWS/Strands credentials are ready.
     from strands import Agent
     from strands.models import BedrockModel
+
     from .tools import get_learner_context, list_open_followups, record_support_note
 
     region = os.getenv("AWS_REGION", "us-west-2")
@@ -108,7 +109,7 @@ def process_event(
         )
         local_result["agent_mode"] = "strands"
         set_decision_mode_data(local_result["event_id"], "strands")
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 - intentional fail-safe boundary
         # Fail safe: cloud/model errors never erase the deterministic decision.
         local_result["agent_mode"] = "policy-fallback"
         local_result["strands_error"] = str(exc)

@@ -1,6 +1,5 @@
 from community_agent.policy import assess_event
 
-
 LEARNER = {
     "learner_id": "L-1",
     "failed_attempts": 3,
