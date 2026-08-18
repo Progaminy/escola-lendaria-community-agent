@@ -1,0 +1,46 @@
+digraph G {
+  rankdir=LR;
+  graph [bgcolor="white", pad="0.2", nodesep="0.35", ranksep="0.5"];
+  node [shape=box, style="rounded", fontname="DejaVu Sans", fontsize=10];
+  edge [fontname="DejaVu Sans", fontsize=9];
+
+  supabase [label="Escola Lendária\nSupabase", shape=cylinder];
+  adapter [label="Privacy-Minimized\nRead-Only Adapter"];
+  platform [label="School / Learning Platform"];
+  api [label="FastAPI Event Gateway"];
+  events [label="Event Store", shape=cylinder];
+  policy [label="Deterministic\nGuardrail Policy"];
+  monitor [label="Autonomous\nCommunity Monitor"];
+  watch [label="Monitoring State", shape=cylinder];
+  learner [label="Learner State +\nCommunity Memory", shape=cylinder];
+  decisions [label="Signals + Decisions", shape=cylinder];
+  queue [label="Human Attention Queue"];
+  strands [label="Strands Community Agent"];
+  bedrock [label="Amazon Bedrock"];
+  tools [label="Constrained Tools"];
+  dash [label="Dashboard + Audit"];
+  human [label="Teacher / Administrator"];
+  agentcore [label="Amazon Bedrock\nAgentCore Runtime", style="rounded,dashed"];
+
+  supabase -> adapter [label=" progress + activity only"];
+  adapter -> learner [label=" read-only sync"];
+  platform -> api [label=" event + event_id"];
+  api -> events;
+  events -> policy;
+  learner -> monitor;
+  monitor -> watch [label=" periodic scan"];
+  watch -> policy;
+  policy -> decisions;
+  policy -> queue [label=" mandatory escalation"];
+  policy -> strands [label=" safe contextual case"];
+  strands -> bedrock;
+  strands -> tools;
+  tools -> learner;
+  decisions -> dash;
+  queue -> dash;
+  watch -> dash;
+  learner -> dash;
+  dash -> human;
+  human -> learner [label=" resolve"];
+  agentcore -> api [style=dashed, label=" deployment"];
+}

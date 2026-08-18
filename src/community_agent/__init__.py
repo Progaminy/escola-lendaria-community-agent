@@ -1,0 +1,1 @@
+"""Escola Lendária Community Agent."""
