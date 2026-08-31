@@ -1,28 +1,87 @@
-# Grand-prize demo script
+# Demo Script — Escola Lendária Community Agent
 
-## 0:00–0:25 — The problem
-A small school can serve many learners but cannot afford a support team watching every learner. A learner can quietly stop progressing without ever opening a chatbot.
+Target length: **3:30–4:00 minutes**. Show the working product first; explain architecture only after the judge has seen the agent act.
 
-## 0:25–0:55 — Real community source
-Open the dashboard and show **Escola Lendária data source**. Explain that the agent can read the school's real learner-progress state while deliberately excluding contacts, PINs, chats, private notes and payment data. Trigger **Sync real learner state** when production credentials are configured.
+## 0:00–0:20 — The problem
 
-## 0:55–1:40 — Proactive monitoring
-Click **Run autonomous scan now**. Show the monitor discovering inactivity or unresolved repeated failures without the learner asking for help. Show the persistent silent-risk table and human attention queue.
+“Small schools cannot watch every learner all the time. The learner most at risk may never ask for help. Escola Lendária Community Agent watches the community in the background and surfaces only the cases that need human attention.”
 
-## 1:40–2:25 — Event-driven handling
-Send a `repeated_failure` event. Show deterministic risk scoring, an evidence-backed signal and the follow-up. With AWS active, show the Strands/Bedrock contextual support note after the safety decision.
+Show the dashboard immediately.
 
-## 2:25–3:00 — Human boundary
-Send a `payment_confirmation` or safety-sensitive event. Show that the agent does not execute the consequential action and instead routes it to a person. Resolve the follow-up and show the audit record.
+## 0:20–0:55 — Autonomous silent-risk detection
 
-## 3:00–3:30 — No alert fatigue
-Send a normal `lesson_completed` event. Show that ordinary progress does not create a human task. The value is fewer, better interventions rather than more notifications.
+Click **Run autonomous scan now**.
 
-## 3:30–4:15 — Architecture
-Show `docs/architecture.png`: real Supabase learner source → privacy-minimized adapter → community memory → autonomous monitor → deterministic guardrails → Strands + Amazon Bedrock → constrained tools → human queue, with AgentCore as the deployment target.
+Point out that the scan runs across the learner population without waiting for a chat message. Show an inactivity or unresolved repeated-failure condition appearing in the monitor.
 
-## 4:15–4:45 — Community impact
-Explain the Good Neighbor idea: one small school can proactively coordinate support across many learners with limited staff. The agent notices silent risk that a request-only chatbot cannot see.
+Say:
 
-## 4:45–5:00 — Closing
-“One agent, many learners, proactive support, human judgment where it matters.”
+“This is the key difference from a chatbot: the learner did not have to ask first.”
+
+## 0:55–1:35 — Event-driven support
+
+Send a `repeated_failure` event.
+
+Show:
+
+- the evidence-backed risk decision;
+- the human attention queue;
+- the owner role and urgency;
+- the decision/audit record.
+
+With AWS configured, show the Strands + Amazon Bedrock contextual support note after the deterministic safety decision.
+
+## 1:35–2:10 — Human safety boundary
+
+Send a `payment_confirmation` event.
+
+Show that the system **does not execute** the payment confirmation or course-access change. It routes the case to a person.
+
+Say:
+
+“Agentic does not mean unrestricted. The model can reason, but consequential actions remain human-controlled.”
+
+Resolve the follow-up and show the audit trail update.
+
+## 2:10–2:35 — No alert fatigue
+
+Show that continuing conditions are deduplicated instead of creating a new alert on every scan. Mention that conditions clear when the evidence disappears.
+
+If useful, send a normal `lesson_completed` event and show that ordinary progress does not create unnecessary human work.
+
+## 2:35–3:00 — Real Escola Lendária context
+
+Show **Escola Lendária data source**.
+
+Explain that the integration is read-only and privacy-minimized: learner activity/progress is used, while contacts, PINs, chats, private notes, drafts, and payment information are deliberately excluded.
+
+If production credentials are configured, click **Sync real learner state**.
+
+## 3:00–3:25 — Architecture and Strands
+
+Show `docs/architecture.png` and briefly trace:
+
+`Escola Lendária / events → privacy-minimized adapter → community state → autonomous monitor → deterministic guardrails → Strands + Amazon Bedrock → constrained tools → human queue → audit`
+
+Mention the included Amazon Bedrock AgentCore runtime adapter.
+
+## 3:25–3:45 — Close on impact
+
+“Escola Lendária Community Agent turns limited staff attention into a shared resource. One agent can watch many learners, detect silent risk early, and bring a person in exactly where judgment matters.”
+
+End with:
+
+**“One agent, many learners, proactive support, human judgment where it matters.”**
+
+## Recording checklist
+
+Before recording, verify:
+
+- the dashboard loads cleanly;
+- at least one silent-risk condition is available for the autonomous scan;
+- the repeated-failure scenario creates a visible follow-up;
+- the consequential-action scenario is visibly blocked/escalated;
+- the human resolution appears in the audit trail;
+- the Strands/Bedrock path is enabled if AWS credentials are available;
+- no secret keys, phone numbers, PINs, or private learner data are visible on screen;
+- the final video is under the hackathon's 5-minute limit.
