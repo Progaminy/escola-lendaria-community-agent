@@ -12,7 +12,7 @@ from bedrock_agentcore.runtime import BedrockAgentCoreApp
 
 from .agent import build_community_briefing, process_event
 from .impact import impact_metrics_data
-from .triage import attention_plan_data
+from .triage import attention_plan_for_agent_data
 
 os.environ.setdefault("COMMUNITY_AGENT_MODE", "strands")
 
@@ -28,7 +28,7 @@ def invoke(payload: dict) -> dict:
 
     if action == "attention_plan":
         limit = int(payload.get("limit") or 12)
-        return {"ok": True, "result": attention_plan_data(limit=limit)}
+        return {"ok": True, "result": attention_plan_for_agent_data(limit=limit)}
 
     if action == "impact":
         return {"ok": True, "result": impact_metrics_data()}
