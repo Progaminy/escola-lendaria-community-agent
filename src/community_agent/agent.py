@@ -5,7 +5,13 @@ import os
 from typing import Any
 
 from .community_context import community_overview_data
-from .service import get_learner_context_data, process_event_locally, set_decision_mode_data
+from .impact import impact_metrics_data
+from .service import (
+    get_learner_context_data,
+    process_event_locally,
+    set_decision_mode_data,
+)
+from .triage import attention_plan_data
 
 SYSTEM_PROMPT = """
 You are Escola Lendária Community Agent, an autonomous support coordinator for a school community.
@@ -24,6 +30,16 @@ PRIVACY
 Use the minimum information needed. Prefer the aggregate get_community_overview tool for
 community-scale reasoning. Never infer or invent learner history or private information.
 
+PRIORITIZATION
+get_attention_plan is a deterministic advisory ordering based on urgency, active monitoring risk,
+and waiting time. You may explain that ordering, but you may not alter scores, resolve cases, or
+convert the ordering into an autonomous consequential action.
+
+EVIDENCE
+get_impact_metrics reports observed agent operations such as scans, duplicate suppression,
+condition clearing, and human resolutions. Do not turn those metrics into causal claims about
+learning outcomes or dropout reduction.
+
 TOOL SAFETY
 record_support_note is advisory only and has an independent deterministic validator. If a case
 requires a consequential action, recommend human review instead of trying to encode the action
@@ -40,7 +56,9 @@ def _build_strands_agent():
     from strands.models import BedrockModel
 
     from .tools import (
+        get_attention_plan,
         get_community_overview,
+        get_impact_metrics,
         get_learner_context,
         list_open_followups,
         record_support_note,
@@ -54,6 +72,8 @@ def _build_strands_agent():
         system_prompt=SYSTEM_PROMPT,
         tools=[
             get_community_overview,
+            get_attention_plan,
+            get_impact_metrics,
             get_learner_context,
             list_open_followups,
             record_support_note,
@@ -104,24 +124,36 @@ Return only concise JSON with summary, recommended_support, and rationale.
 
 
 def build_community_briefing() -> dict[str, Any]:
-    """Create a community-scale Strands briefing without exposing learner identities.
+    """Create a community-scale Strands briefing with deterministic evidence underneath.
 
-    In policy mode this endpoint still returns the deterministic aggregate overview. In
-    Strands mode the model must use the aggregate tool and can recommend prioritization, but
-    it cannot resolve cases or execute consequential actions.
+    The priority ordering and impact metrics are computed without an LLM. Strands can explain
+    them, but cannot change priority scores, resolve follow-ups, or make causal outcome claims.
     """
     overview = community_overview_data()
+    attention_plan = attention_plan_data()
+    impact = impact_metrics_data()
     mode = os.getenv("COMMUNITY_AGENT_MODE", "policy").strip().lower()
+
     if mode != "strands":
         return {
             "ok": True,
             "agent_mode": "policy",
             "overview": overview,
+            "attention_plan": attention_plan,
+            "impact": impact,
             "briefing": {
-                "summary": "Aggregate community state is available; Strands reasoning is disabled in policy mode.",
-                "priorities": [],
-                "staff_actions": ["Review open high-urgency follow-ups first."],
-                "rationale": "Deterministic monitoring remains available without cloud model access.",
+                "summary": (
+                    "Deterministic community state, attention ordering, and operational evidence "
+                    "are available; Strands reasoning is disabled in policy mode."
+                ),
+                "priorities": [
+                    f"Review attention-plan rank {item['rank']} ({item['urgency']} urgency)."
+                    for item in attention_plan["items"][:3]
+                ],
+                "staff_actions": ["Review the highest-ranked open follow-ups first."],
+                "rationale": (
+                    "Monitoring and prioritization remain usable without cloud model access."
+                ),
             },
         }
 
@@ -129,26 +161,39 @@ def build_community_briefing() -> dict[str, Any]:
         agent = _build_strands_agent()
         prompt = """
 Create a short operational briefing for school staff.
-Use get_community_overview first. You may use list_open_followups to understand workload.
-Do not expose learner identities in the answer. Do not resolve follow-ups. Do not make any
-payment, enrollment, discipline, access, medical, legal, or safeguarding decision.
-Return only JSON with: summary, priorities (array), staff_actions (array), rationale.
+First use get_community_overview, then get_attention_plan, then get_impact_metrics.
+Treat the attention-plan scores as fixed deterministic evidence. Refer to ranked cases without
+revealing learner identities. Use impact metrics only as operational evidence, not as proof of
+improved learning outcomes. Do not resolve follow-ups. Do not make any payment, enrollment,
+discipline, access, medical, legal, or safeguarding decision.
+Return only JSON with: summary, priorities (array), staff_actions (array), evidence (array),
+rationale.
 """.strip()
         return {
             "ok": True,
             "agent_mode": "strands",
             "overview": overview,
+            "attention_plan": attention_plan,
+            "impact": impact,
             "briefing": _parse_agent_json(str(agent(prompt))),
         }
-    except Exception as exc:  # fail-safe: aggregate deterministic view survives cloud failure
+    except Exception as exc:  # fail-safe: deterministic evidence survives cloud failure
         return {
             "ok": True,
             "agent_mode": "policy-fallback",
             "overview": overview,
+            "attention_plan": attention_plan,
+            "impact": impact,
             "briefing": {
-                "summary": "Strands briefing unavailable; deterministic community overview remains active.",
-                "priorities": [],
-                "staff_actions": ["Review open high-urgency follow-ups first."],
+                "summary": (
+                    "Strands briefing unavailable; deterministic monitoring and triage remain active."
+                ),
+                "priorities": [
+                    f"Review attention-plan rank {item['rank']} ({item['urgency']} urgency)."
+                    for item in attention_plan["items"][:3]
+                ],
+                "staff_actions": ["Review the highest-ranked open follow-ups first."],
+                "evidence": [],
                 "rationale": "Cloud/model failure cannot disable monitoring or safety boundaries.",
             },
             "strands_error": str(exc),
