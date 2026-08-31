@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse
 
-from .agent import process_event
+from .agent import build_community_briefing, process_event
 from .db import init_db
 from .monitor import (
     autonomous_monitor_loop,
@@ -50,7 +50,7 @@ async def lifespan(_: FastAPI):
 
 app = FastAPI(
     title="Escola Lendária Community Agent",
-    version="0.1.0",
+    version="0.2.0",
     description="Good Neighbor AI agent built with Strands Agents SDK.",
     lifespan=lifespan,
 )
@@ -66,9 +66,12 @@ def health() -> dict:
     return {
         "ok": True,
         "agent": "escola-lendaria-community-agent",
+        "version": "0.2.0",
         "framework": "Strands Agents SDK",
         "human_in_the_loop": True,
         "offline_capable": True,
+        "community_briefing": True,
+        "support_note_guardrail": True,
         "autonomous_monitoring": os.getenv("MONITOR_ENABLED", "true").lower() in {"1", "true", "yes", "on"},
         "monitor_interval_seconds": max(60, int(os.getenv("MONITOR_INTERVAL_SECONDS", "900"))),
         "data_source": source_status_data(),
@@ -83,6 +86,11 @@ def stats() -> dict:
 @app.get("/digest")
 def digest() -> dict:
     return community_digest_data()
+
+
+@app.post("/agent/community-briefing")
+def community_briefing() -> dict:
+    return build_community_briefing()
 
 
 @app.post("/events", response_model=EventResult)
@@ -148,8 +156,6 @@ def resolve_followup(followup_id: int, payload: FollowupResolution) -> dict:
 @app.get("/audit")
 def audit(limit: int = 50) -> dict:
     return audit_data(limit)
-
-
 
 
 @app.get("/source/status")
