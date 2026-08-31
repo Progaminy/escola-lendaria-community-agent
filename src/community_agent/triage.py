@@ -40,10 +40,11 @@ def _priority_score(*, urgency: str, monitor_risk: int, age_hours: int) -> int:
 
 
 def attention_plan_data(limit: int = 12, now: datetime | None = None) -> dict[str, Any]:
-    """Return a deterministic, explainable priority plan for open human follow-ups.
+    """Return the internal deterministic priority plan for authorized staff/API use.
 
-    Strands may summarize this plan, but it cannot change the score, resolve a case,
-    or execute the underlying consequential action.
+    This form includes stable internal identifiers because the human dashboard needs them
+    to resolve a selected follow-up. The Strands tool does *not* receive this form; use
+    `attention_plan_for_agent_data` for model-facing community reasoning.
     """
     init_db()
     limit = max(1, min(limit, 50))
@@ -97,7 +98,47 @@ def attention_plan_data(limit: int = 12, now: datetime | None = None) -> dict[st
     return {
         "policy": "deterministic urgency + active risk + waiting-time prioritization",
         "authority": "advisory ordering only; humans retain resolution authority",
+        "privacy_scope": "authorized internal queue; contains stable internal identifiers",
         "items": [dict(rank=index + 1, **item) for index, item in enumerate(items)],
         "count": len(items),
         "owner_load": owner_load,
+    }
+
+
+def attention_plan_for_agent_data(
+    limit: int = 12,
+    now: datetime | None = None,
+) -> dict[str, Any]:
+    """Return the same fixed ordering without learner/follow-up/event identifiers.
+
+    The model only needs rank, workload, urgency, risk and waiting evidence to create a
+    community briefing. Removing stable identifiers reduces unnecessary disclosure while
+    preserving the exact deterministic priority scores.
+    """
+    internal = attention_plan_data(limit=limit, now=now)
+    safe_items: list[dict[str, Any]] = []
+    for item in internal["items"]:
+        safe_items.append(
+            {
+                "case_alias": f"priority-case-{item['rank']:02d}",
+                "rank": item["rank"],
+                "priority_score": item["priority_score"],
+                "urgency": item["urgency"],
+                "owner_role": item["owner_role"],
+                "monitor_risk": item["monitor_risk"],
+                "age_hours": item["age_hours"],
+                "why_now": item["why_now"],
+                "reason_category": item["reason"],
+            }
+        )
+
+    return {
+        "policy": internal["policy"],
+        "authority": internal["authority"],
+        "privacy_scope": (
+            "model-safe community queue; no learner_id, followup id, event_id, or timestamps"
+        ),
+        "items": safe_items,
+        "count": internal["count"],
+        "owner_load": internal["owner_load"],
     }
