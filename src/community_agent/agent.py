@@ -11,7 +11,7 @@ from .service import (
     process_event_locally,
     set_decision_mode_data,
 )
-from .triage import attention_plan_data
+from .triage import attention_plan_for_agent_data
 
 SYSTEM_PROMPT = """
 You are Escola Lendária Community Agent, an autonomous support coordinator for a school community.
@@ -28,7 +28,8 @@ course-access decisions, medical/legal decisions, and safeguarding decisions rem
 
 PRIVACY
 Use the minimum information needed. Prefer the aggregate get_community_overview tool for
-community-scale reasoning. Never infer or invent learner history or private information.
+community-scale reasoning. Community-level attention-plan cases use temporary aliases rather
+than stable learner/follow-up/event identifiers. Never infer or invent private information.
 
 PRIORITIZATION
 get_attention_plan is a deterministic advisory ordering based on urgency, active monitoring risk,
@@ -124,13 +125,13 @@ Return only concise JSON with summary, recommended_support, and rationale.
 
 
 def build_community_briefing() -> dict[str, Any]:
-    """Create a community-scale Strands briefing with deterministic evidence underneath.
+    """Create a privacy-minimized Strands briefing over deterministic evidence.
 
-    The priority ordering and impact metrics are computed without an LLM. Strands can explain
-    them, but cannot change priority scores, resolve follow-ups, or make causal outcome claims.
+    The priority ordering and impact metrics are computed without an LLM. The briefing form of
+    the attention plan strips stable learner/follow-up/event identifiers before model reasoning.
     """
     overview = community_overview_data()
-    attention_plan = attention_plan_data()
+    attention_plan = attention_plan_for_agent_data()
     impact = impact_metrics_data()
     mode = os.getenv("COMMUNITY_AGENT_MODE", "policy").strip().lower()
 
@@ -143,8 +144,8 @@ def build_community_briefing() -> dict[str, Any]:
             "impact": impact,
             "briefing": {
                 "summary": (
-                    "Deterministic community state, attention ordering, and operational evidence "
-                    "are available; Strands reasoning is disabled in policy mode."
+                    "Deterministic community state, identifier-free attention ordering, and "
+                    "operational evidence are available; Strands reasoning is disabled in policy mode."
                 ),
                 "priorities": [
                     f"Review attention-plan rank {item['rank']} ({item['urgency']} urgency)."
@@ -162,10 +163,11 @@ def build_community_briefing() -> dict[str, Any]:
         prompt = """
 Create a short operational briefing for school staff.
 First use get_community_overview, then get_attention_plan, then get_impact_metrics.
-Treat the attention-plan scores as fixed deterministic evidence. Refer to ranked cases without
-revealing learner identities. Use impact metrics only as operational evidence, not as proof of
-improved learning outcomes. Do not resolve follow-ups. Do not make any payment, enrollment,
-discipline, access, medical, legal, or safeguarding decision.
+Treat the attention-plan scores as fixed deterministic evidence. The attention-plan tool already
+uses temporary case aliases; do not seek or expose stable learner identifiers. Use impact metrics
+only as operational evidence, not as proof of improved learning outcomes. Do not resolve
+follow-ups. Do not make any payment, enrollment, discipline, access, medical, legal, or
+safeguarding decision.
 Return only JSON with: summary, priorities (array), staff_actions (array), evidence (array),
 rationale.
 """.strip()
@@ -228,8 +230,6 @@ def process_event(
         local_result["agent_mode"] = "policy"
         return local_result
 
-    # Strands is meaningful for contextual interpretation, while hard safety
-    # and escalation decisions remain deterministic and auditable.
     try:
         local_result["strands"] = _strands_enrichment(
             learner_id=learner_id,
@@ -240,7 +240,6 @@ def process_event(
         local_result["agent_mode"] = "strands"
         set_decision_mode_data(local_result["event_id"], "strands")
     except Exception as exc:  # noqa: BLE001 - intentional fail-safe boundary
-        # Fail safe: cloud/model errors never erase the deterministic decision.
         local_result["agent_mode"] = "policy-fallback"
         local_result["strands_error"] = str(exc)
         set_decision_mode_data(local_result["event_id"], "policy-fallback")
