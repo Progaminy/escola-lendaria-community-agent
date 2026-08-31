@@ -5,7 +5,7 @@ from strands import tool
 from .community_context import community_overview_data
 from .impact import impact_metrics_data
 from .safety import record_safe_support_note_data
-from .service import get_learner_context_data, list_open_followups_data
+from .service import get_learner_context_data
 from .triage import attention_plan_for_agent_data
 
 
@@ -51,16 +51,6 @@ def get_impact_metrics() -> dict:
     and human resolutions. They are not claims of causal learning improvement.
     """
     return impact_metrics_data()
-
-
-@tool
-def list_open_followups(urgency: str = "all") -> dict:
-    """List open human follow-ups across the school community.
-
-    Args:
-        urgency: all, low, medium, or high.
-    """
-    return list_open_followups_data(urgency)
 
 
 @tool
