@@ -44,32 +44,34 @@ This is not a request/response chatbot.
 priority = urgency base + active-risk bonus + waiting-time bonus
 ```
 
-The score is computed in `src/community_agent/triage.py`, not by the language model. Strands may explain the ordering but cannot alter scores or resolve cases.
+The score is computed in `src/community_agent/triage.py`, not by the language model. The internal staff/API view contains stable IDs so an authorized human can resolve a selected task. The **model-facing form preserves the exact ranking but removes learner, follow-up, event IDs, and timestamps**, using aliases such as `priority-case-01` instead.
 
-This matters because the real bottleneck in a small school is not simply detecting risk — it is deciding **what the limited human team should look at first**.
+This matters because the real bottleneck in a small school is not simply detecting risk — it is deciding **what the limited human team should look at first** without unnecessarily expanding model access to identifiable data.
 
 ## Strands tools
 
-The model-facing surface is intentionally smaller than the application surface:
+The model-facing surface is intentionally smaller than the application surface and now contains only five tools:
 
 - `get_community_overview` — aggregate-only community context, no learner identities;
-- `get_attention_plan` — fixed deterministic human-work ordering;
+- `get_attention_plan` — fixed deterministic human-work ordering with temporary case aliases and no stable IDs;
 - `get_impact_metrics` — observed operational evidence, explicitly non-causal;
-- `get_learner_context` — factual context for a specific case;
-- `list_open_followups` — visibility into open human work;
+- `get_learner_context` — factual context only when processing a specific learner case;
 - `record_support_note` — bounded advisory note with independent deterministic validation.
 
-There is **no Strands tool** for payment confirmation, course-access changes, punishment, expulsion, enrollment decisions, account deletion, medical/legal decisions, or safeguarding decisions.
+The application still has its own human-facing follow-up queue, but the raw queue is **not** a Strands community tool.
+
+There is **no Strands tool** for payment confirmation, course-access changes, punishment, expulsion, enrollment decisions, account deletion, medical/legal decisions, safeguarding decisions, or human-task resolution.
 
 ## Safety is code, not just prompting
 
 1. **Policy before model:** hard escalation rules execute before Strands and cannot be downgraded by it.
-2. **Tool minimization:** consequential write tools do not exist in the model tool surface.
-3. **Support-note validator:** even advisory model text is rejected if it is empty, oversized, targets an unknown learner, or tries to encode a consequential action.
-4. **Fail-safe cloud behavior:** a Bedrock failure preserves the deterministic decision instead of erasing it.
-5. **Secret scanning:** CI scans for high-confidence committed credential patterns before lint/tests.
+2. **Tool minimization:** consequential write tools and the raw cross-community follow-up queue do not exist in the model tool surface.
+3. **Identifier minimization:** community triage is transformed to temporary aliases before Strands reasoning.
+4. **Support-note validator:** advisory model text is rejected if it is empty, oversized, targets an unknown learner, or tries to encode a consequential action.
+5. **Fail-safe cloud behavior:** a Bedrock failure preserves the deterministic decision instead of erasing it.
+6. **Secret scanning:** CI scans for high-confidence committed credential patterns before lint/tests.
 
-See [`SECURITY.md`](SECURITY.md), [`src/community_agent/safety.py`](src/community_agent/safety.py), and [`scripts/security_scan.py`](scripts/security_scan.py).
+See [`SECURITY.md`](SECURITY.md), [`src/community_agent/safety.py`](src/community_agent/safety.py), [`src/community_agent/triage.py`](src/community_agent/triage.py), and [`scripts/security_scan.py`](scripts/security_scan.py).
 
 ## Real-world, privacy-minimized source
 
@@ -112,7 +114,7 @@ Run the app and open `http://localhost:8080`:
 
 1. Click **Run fresh community scan**.
 2. Inspect the **ranked human attention plan** and its `why_now` evidence.
-3. Click **Generate briefing** to see the Strands/community path (or deterministic fallback in policy mode).
+3. Click **Generate briefing** and verify that the returned community attention plan contains aliases rather than stable learner IDs.
 4. Send a `payment_confirmation` event and verify that it becomes human work rather than an executed action.
 5. Resolve a follow-up and watch the **operational evidence + audit trail** change.
 
@@ -209,12 +211,13 @@ ruff check src tests scripts
 pytest -q
 ```
 
-The suite covers policy, idempotency, monitor detection/deduplication/clearing, API behavior, source minimization, model-note safety, aggregate privacy, deterministic attention ranking, and operational impact metrics.
+The suite covers policy, idempotency, monitor detection/deduplication/clearing, API behavior, source minimization, model-note safety, aggregate privacy, identifier-free model triage, deterministic attention ranking, and operational impact metrics.
 
 ## Bonus and provenance
 
 - AWS Builder Center bonus-post draft: [`docs/AWS_BUILDER_BLOG_DRAFT.md`](docs/AWS_BUILDER_BLOG_DRAFT.md)
 - Reproducible evaluation: [`docs/EVALUATION.md`](docs/EVALUATION.md)
+- Impact measurement plan: [`docs/IMPACT_MEASUREMENT.md`](docs/IMPACT_MEASUREMENT.md)
 - Demo script: [`docs/DEMO_SCRIPT.md`](docs/DEMO_SCRIPT.md)
 
 This repository is the new hackathon agent implementation. The existing Escola Lendária platform supplies real community context and an optional read-only progress source; pre-existing platform code is not represented as newly built hackathon work.
