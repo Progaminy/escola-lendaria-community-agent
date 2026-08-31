@@ -3,6 +3,7 @@ from __future__ import annotations
 from strands import tool
 
 from .community_context import community_overview_data
+from .impact import impact_metrics_data
 from .safety import record_safe_support_note_data
 from .service import get_learner_context_data, list_open_followups_data
 from .triage import attention_plan_data
@@ -40,6 +41,16 @@ def get_attention_plan(limit: int = 12) -> dict:
         limit: Maximum number of open follow-ups to return (1-50).
     """
     return attention_plan_data(limit=limit)
+
+
+@tool
+def get_impact_metrics() -> dict:
+    """Return aggregate operational evidence about what the agent has done.
+
+    Metrics include monitoring runs, duplicate suppression, condition clearing,
+    and human resolutions. They are not claims of causal learning improvement.
+    """
+    return impact_metrics_data()
 
 
 @tool
