@@ -136,7 +136,7 @@ def attention_plan_for_agent_data(
         "policy": internal["policy"],
         "authority": internal["authority"],
         "privacy_scope": (
-            "model-safe community queue; no learner_id, followup id, event_id, or timestamps"
+            "model-safe community queue; stable case identifiers and timestamps are excluded"
         ),
         "items": safe_items,
         "count": internal["count"],
