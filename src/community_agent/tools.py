@@ -2,11 +2,9 @@ from __future__ import annotations
 
 from strands import tool
 
-from .service import (
-    get_learner_context_data,
-    list_open_followups_data,
-    record_support_note_data,
-)
+from .community_context import community_overview_data
+from .safety import record_safe_support_note_data
+from .service import get_learner_context_data, list_open_followups_data
 
 
 @tool
@@ -17,6 +15,17 @@ def get_learner_context(learner_id: str) -> dict:
         learner_id: Stable learner identifier.
     """
     return get_learner_context_data(learner_id)
+
+
+@tool
+def get_community_overview() -> dict:
+    """Return a privacy-safe aggregate view of the whole school community.
+
+    The result contains counts and risk categories only. It intentionally
+    excludes learner names, learner IDs, private notes, contacts, PINs, chats,
+    payment information, and event details.
+    """
+    return community_overview_data()
 
 
 @tool
@@ -31,17 +40,17 @@ def list_open_followups(urgency: str = "all") -> dict:
 
 @tool
 def record_support_note(learner_id: str, note: str, event_id: str = "") -> dict:
-    """Persist a non-consequential support note drafted by the Strands agent.
+    """Persist a bounded, non-consequential support note drafted by Strands.
 
-    The note is advisory only. It cannot confirm payments, unlock courses,
-    punish learners, or replace a human decision.
+    A deterministic validator rejects empty, oversized, or consequential
+    instructions before anything is stored. The note remains advisory only.
 
     Args:
         learner_id: Stable learner identifier.
         note: Concise educational/community support note.
         event_id: Optional event identifier tying the note to an event.
     """
-    return record_support_note_data(
+    return record_safe_support_note_data(
         learner_id=learner_id,
         note=note,
         event_id=event_id or None,
