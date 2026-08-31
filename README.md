@@ -1,51 +1,83 @@
 # Escola Lendária Community Agent
 
-**Good Neighbor AI for schools: detect silent learner risk early, coordinate support, and keep consequential decisions human-controlled.**
+**A proactive Good Neighbor AI for schools: detect silent learner risk, prioritize scarce staff attention, use Strands + Amazon Bedrock for bounded reasoning, and keep consequential decisions human-controlled.**
 
-Built for the **Agents for Humans Hackathon 2026** with **Strands Agents SDK + Amazon Bedrock**, an **Amazon Bedrock AgentCore runtime adapter**, and a privacy-minimized read-only connection to the real Escola Lendária learner-progress source.
+Built for the **Agents for Humans Hackathon 2026** with **Strands Agents SDK + Amazon Bedrock**, an **Amazon Bedrock AgentCore runtime adapter**, FastAPI, persistent operational state, and a privacy-minimized read-only connection to real Escola Lendária learner progress.
 
-> **One agent, many learners, proactive support, human judgment where it matters.**
+> **One agent, many learners, one prioritized human queue.**
 
-## The problem
+## The specific problem
 
-Small schools and learning communities often have many learners and very limited support staff. The hardest learner to help is often the one who never asks: they stop opening lessons, repeat the same failures, or quietly fall behind.
+Small schools cannot continuously watch every learner. The learner most likely to be missed is often the one who never opens a support chat: they quietly stop returning, repeat the same failure, or accumulate warning signals while limited staff attention is elsewhere.
 
-A normal chatbot waits for a message. **Community Agent watches the community as a whole.** It detects meaningful risk signals, avoids duplicate alerts, and routes only the cases that deserve human attention.
+A request-only chatbot sees the learner who speaks. **Community Agent is designed to notice the learner who goes quiet.**
 
-## What the agent does end to end
+## One end-to-end workflow
 
-1. **Observes privacy-minimized learner activity** from local events or the read-only Escola Lendária Supabase source.
-2. **Runs autonomous community scans** to detect silent inactivity and unresolved repeated failures.
-3. **Persists risk conditions** across scans, deduplicates continuing conditions, and clears them when evidence changes.
-4. **Applies deterministic safety guardrails** before any model reasoning.
-5. **Uses Strands + Amazon Bedrock** for bounded case-level and community-level reasoning.
-6. **Creates and prioritizes human follow-ups** when judgment is required.
-7. **Validates model-authored support notes deterministically** before persistence.
-8. **Records an audit trail** of monitoring, decisions, notes, escalation, and human resolution.
+The judge-focused dashboard makes the product loop explicit:
+
+1. **Observe** — synchronize only the learner activity/progress fields needed for monitoring.
+2. **Detect** — autonomously scan the whole community for silent inactivity, unresolved repeated failures, and accumulating support signals.
+3. **Persist and deduplicate** — keep each risk episode across scans instead of creating a new alert every time; clear it when evidence disappears.
+4. **Prioritize human attention** — deterministically rank open work using urgency, active monitoring risk, and waiting time.
+5. **Reason with Strands + Bedrock** — explain community state and ranked work through a deliberately constrained tool surface.
+6. **Keep judgment human** — payments, access, discipline, enrollment, deletion, medical/legal, and safeguarding decisions are never model-executable actions.
+7. **Resolve and audit** — a person closes the task and the complete chain remains auditable.
+8. **Measure operations** — report scans, duplicate suppression, cleared conditions, decision modes, and human resolutions without pretending those metrics prove learning outcomes.
 
 ## Why this is agentic
 
-This is not a request/response chatbot. The core loop runs even when no learner talks to it.
+This is not a request/response chatbot.
 
-- **Autonomous:** the monitor scans the learner population on a schedule.
-- **Stateful:** conditions persist across runs and clear when evidence changes.
-- **Tool-using:** Strands can retrieve privacy-safe community context, inspect factual case context, inspect human follow-ups, and write bounded advisory notes.
-- **Goal-directed:** the objective is to reduce silent learner risk while minimizing unnecessary staff interruptions.
-- **Human-aware:** consequential actions are escalated instead of executed autonomously.
-- **Resilient:** if Bedrock is temporarily unavailable, deterministic monitoring continues in policy-fallback mode.
+- **Autonomous:** a scheduled monitor runs without a learner prompt.
+- **Stateful:** risk conditions survive across runs and later clear.
+- **Tool-using:** Strands reads bounded case/community context, fixed triage evidence, impact evidence, and can write only validated advisory support notes.
+- **Goal-directed:** it converts limited staff attention into a prioritized shared resource.
+- **Human-aware:** consequential decisions are escalated rather than executed.
+- **Resilient:** if Bedrock is unavailable, deterministic monitoring, safety, triage, and evidence remain available.
 
-## 90-second judge path
+## Deterministic attention planning
 
-After starting the app, open `http://localhost:8080` and:
+`GET /attention-plan` ranks open human follow-ups using an explainable formula:
 
-1. Click **Run autonomous scan now** — see silent learner conditions appear without a learner request.
-2. Send a **repeated_failure** event — see a risk decision and human follow-up.
-3. Send a **payment_confirmation** event — see the agent refuse autonomous execution and route it to a person.
-4. Resolve the follow-up — see the resolution enter the audit trail.
-5. Call `POST /agent/community-briefing` — inspect privacy-safe community-level reasoning.
-6. Open **Recent agent decisions** and **Audit trail** — inspect the full chain of evidence and action.
+```text
+priority = urgency base + active-risk bonus + waiting-time bonus
+```
 
-For the full judging map, see [`JUDGES_GUIDE.md`](JUDGES_GUIDE.md). For a reproducible evaluation matrix, see [`docs/EVALUATION.md`](docs/EVALUATION.md). For the video flow, see [`docs/DEMO_SCRIPT.md`](docs/DEMO_SCRIPT.md).
+The score is computed in `src/community_agent/triage.py`, not by the language model. Strands may explain the ordering but cannot alter scores or resolve cases.
+
+This matters because the real bottleneck in a small school is not simply detecting risk — it is deciding **what the limited human team should look at first**.
+
+## Strands tools
+
+The model-facing surface is intentionally smaller than the application surface:
+
+- `get_community_overview` — aggregate-only community context, no learner identities;
+- `get_attention_plan` — fixed deterministic human-work ordering;
+- `get_impact_metrics` — observed operational evidence, explicitly non-causal;
+- `get_learner_context` — factual context for a specific case;
+- `list_open_followups` — visibility into open human work;
+- `record_support_note` — bounded advisory note with independent deterministic validation.
+
+There is **no Strands tool** for payment confirmation, course-access changes, punishment, expulsion, enrollment decisions, account deletion, medical/legal decisions, or safeguarding decisions.
+
+## Safety is code, not just prompting
+
+1. **Policy before model:** hard escalation rules execute before Strands and cannot be downgraded by it.
+2. **Tool minimization:** consequential write tools do not exist in the model tool surface.
+3. **Support-note validator:** even advisory model text is rejected if it is empty, oversized, targets an unknown learner, or tries to encode a consequential action.
+4. **Fail-safe cloud behavior:** a Bedrock failure preserves the deterministic decision instead of erasing it.
+5. **Secret scanning:** CI scans for high-confidence committed credential patterns before lint/tests.
+
+See [`SECURITY.md`](SECURITY.md), [`src/community_agent/safety.py`](src/community_agent/safety.py), and [`scripts/security_scan.py`](scripts/security_scan.py).
+
+## Real-world, privacy-minimized source
+
+The agent can synchronize read-only with Escola Lendária's existing Supabase learner state. The source projection deliberately requests only the minimum fields needed for monitoring and only `state.progress` from the JSON state.
+
+The integration does **not request or copy** contacts, progress PINs, chats, private notes, drafts, scratch data, payment information, or support-message bodies.
+
+The public live judge page also renders only temporary aliases and aggregate risk evidence.
 
 ## Public live judge demo
 
@@ -57,140 +89,75 @@ Structured verification:
 
 `https://uvypcuixxrjikjaduvyo.supabase.co/functions/v1/community-agent-demo?format=json`
 
-The public endpoint performs a fresh, **read-only** scan against privacy-minimized Escola Lendária progress data. It returns temporary aliases and aggregate risk evidence only. It does not render learner names, raw learner IDs, contacts, PINs, chats, private notes, or payment information.
+The public endpoint is a read-only verifier against privacy-minimized real learner progress. The full operational agent and human queue live in this repository.
 
-The Edge Function source is versioned in [`supabase/functions/community-agent-demo/index.ts`](supabase/functions/community-agent-demo/index.ts).
+## Operational evidence, not inflated claims
 
-## Good Neighbor impact
+`GET /impact` reports what the agent can actually prove from its own audit store:
 
-The beneficiary is a **group**, not a single user: a school community whose staff cannot continuously watch every learner.
+- monitoring runs and learner scans;
+- active condition observations;
+- new alerts created;
+- continuing conditions that did not create duplicate alerts;
+- duplicate-suppression rate;
+- conditions cleared;
+- human resolutions;
+- open follow-ups and decision modes.
 
-The monitor currently detects:
+It deliberately labels those as **operational agent behavior, not causal proof of better learning outcomes**. See [`docs/IMPACT_MEASUREMENT.md`](docs/IMPACT_MEASUREMENT.md) for the future pilot design.
 
-- 7+ and 14+ days of inactivity;
-- 3+ and 5+ unresolved failed attempts;
-- accumulating support signals;
-- high-risk or consequential events requiring human judgment.
+## 90-second judge path
 
-The value is not “more alerts.” The value is **fewer, better interventions**: identify silent risk, suppress duplicates, clear stale conditions, and send only meaningful cases to people.
+Run the app and open `http://localhost:8080`:
 
-## Real Escola Lendária data source
+1. Click **Run fresh community scan**.
+2. Inspect the **ranked human attention plan** and its `why_now` evidence.
+3. Click **Generate briefing** to see the Strands/community path (or deterministic fallback in policy mode).
+4. Send a `payment_confirmation` event and verify that it becomes human work rather than an executed action.
+5. Resolve a follow-up and watch the **operational evidence + audit trail** change.
 
-The hackathon agent can synchronize with the existing Escola Lendária Supabase backend. The integration is intentionally **read-only and privacy-minimized**.
-
-Source table:
-
-- `public.learning_user_state`
-
-Fields used:
-
-- learner `user_id`;
-- display `name`;
-- `school_level`;
-- `last_access_at`;
-- `updated_at`;
-- only `state.progress` from the JSON state.
-
-The integration **does not request or copy** contact numbers, progress PINs, chats, notes, drafts, scratch data, payment information, or support-message bodies.
-
-For every progress entry, the adapter uses lesson/course context, completion state, `wrongAttempts`, and activity timestamps. Resolved failures on completed lessons are not counted as current repeated-failure risk.
-
-### Configure the real source
-
-Copy `.env.example` to `.env`, then inject a server-side Supabase service-role key with a secret manager or local environment. Never commit that key.
-
-```bash
-SUPABASE_URL=https://<project>.supabase.co
-SUPABASE_SECRET_KEY=<sb_secret_... backend key>
-SUPABASE_SYNC_ENABLED=true
-```
-
-Manual synchronization:
-
-```bash
-curl -X POST http://localhost:8080/source/supabase/sync
-```
-
-Source status:
-
-```bash
-curl http://localhost:8080/source/status
-```
-
-When `SUPABASE_SYNC_ENABLED=true`, every autonomous monitor run attempts a source sync first. A temporary source outage does **not** disable the local deterministic monitor.
-
-## Human safety boundary
-
-Community Agent intentionally cannot autonomously confirm or execute:
-
-- payments;
-- enrollment, expulsion, or punishment;
-- account deletion;
-- course-access changes;
-- medical or legal decisions;
-- safeguarding decisions requiring a person.
-
-These cases are routed to a human attention queue with an owner role and urgency. The model-facing tool surface is deliberately smaller than the application surface.
-
-## Two-layer tool safety
-
-Safety is enforced in code, not only in the prompt.
-
-1. **Deterministic policy first:** hard escalation rules run before model reasoning and cannot be downgraded by Strands.
-2. **Deterministic support-note validator:** model-authored notes are rejected if they are empty, oversized, target an unknown learner, or try to encode a consequential action such as confirming payment, unlocking course access, deleting an account, punishment, or legal/medical decisions.
-
-See [`src/community_agent/safety.py`](src/community_agent/safety.py) and [`tests/test_safety.py`](tests/test_safety.py).
-
-## Strands tools
-
-The Strands agent can use only:
-
-- `get_community_overview` — aggregate-only community context with no learner identities;
-- `get_learner_context` — factual case context;
-- `list_open_followups` — open human work queue;
-- `record_support_note` — bounded advisory support note with deterministic validation.
-
-There is no Strands tool for payment confirmation, course-access changes, discipline, enrollment decisions, account deletion, medical/legal decisions, or safeguarding decisions.
-
-### Community-level reasoning
-
-`get_community_overview` is implemented in [`src/community_agent/community_context.py`](src/community_agent/community_context.py). It exposes counts, active monitoring categories, event mix, decision mix, and follow-up workload while intentionally excluding learner names, learner IDs, event details, private notes, contacts, PINs, chats, and payment information.
-
-`POST /agent/community-briefing` uses this aggregate context to create a short operational briefing in Strands mode. In policy mode or during a Bedrock failure, it still returns the deterministic aggregate overview.
+For a deeper verification path see [`JUDGES_GUIDE.md`](JUDGES_GUIDE.md) and [`docs/EVALUATION.md`](docs/EVALUATION.md).
 
 ## Architecture
 
 ```text
-Escola Lendária / local events
-            |
-            v
- privacy-minimized adapter
-            |
-            v
-   community state + audit
-            |
-     +------+------+
-     |             |
-     v             v
- autonomous     event-driven
- monitor        processing
-     |             |
-     +------+------+
-            v
- deterministic guardrails
-            |
-            v
- Strands Agents + Bedrock
-    constrained tools
-            |
-            v
- human attention queue
-            |
-            v
- human resolution + audit
+Escola Lendária learner progress / school events
+                    |
+                    v
+         privacy-minimized adapter
+                    |
+                    v
+        community state + audit store
+                    |
+             autonomous monitor
+                    |
+      persistent risk episodes / clearing
+                    |
+                    v
+       deterministic guardrail policy
+                    |
+        +-----------+-----------+
+        |                       |
+        v                       v
+ deterministic attention   safe contextual cases
+       planning                  |
+        |                        v
+        |               Strands + Amazon Bedrock
+        |                 constrained tools
+        +-----------+-----------+
+                    v
+            human attention queue
+                    |
+                    v
+          human resolution + audit
+                    |
+                    v
+          operational impact metrics
+
+Amazon Bedrock AgentCore runtime adapter -> same agent/safety path
 ```
 
-See [`ARCHITECTURE.md`](ARCHITECTURE.md) and [`docs/architecture.png`](docs/architecture.png). The repository also includes an **Amazon Bedrock AgentCore runtime adapter** for deployment.
+See [`ARCHITECTURE.md`](ARCHITECTURE.md), [`docs/architecture.png`](docs/architecture.png), and [`docs/AGENTCORE.md`](docs/AGENTCORE.md).
 
 ## API
 
@@ -198,6 +165,8 @@ See [`ARCHITECTURE.md`](ARCHITECTURE.md) and [`docs/architecture.png`](docs/arch
 GET  /health
 GET  /stats
 GET  /digest
+GET  /attention-plan
+GET  /impact
 POST /agent/community-briefing
 POST /events
 GET  /events
@@ -214,65 +183,41 @@ POST /source/supabase/sync
 GET  /source/status
 ```
 
-The root URL serves the dashboard with the human queue, silent-risk monitor, source status, recent decisions, and audit trail.
-
-## Install
+## Run locally
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -e ".[dev]"
-cp .env.example .env
-```
-
-## Run without AWS
-
-This mode is ideal for reviewing the safety and monitoring path locally.
-
-```bash
 export COMMUNITY_AGENT_MODE=policy
 PYTHONPATH=src python -m community_agent.seed_demo
 PYTHONPATH=src uvicorn community_agent.api:app --host 0.0.0.0 --port 8080
 ```
 
-Then open `http://localhost:8080`.
-
-You can also run the complete offline scenario from the terminal:
-
-```bash
-PYTHONPATH=src python -m community_agent.offline_demo
-```
-
-## Run with Strands + Amazon Bedrock
-
-After AWS credentials and Bedrock model access are configured:
+For Strands + Bedrock:
 
 ```bash
 export COMMUNITY_AGENT_MODE=strands
 PYTHONPATH=src uvicorn community_agent.api:app --host 0.0.0.0 --port 8080
 ```
 
-Generate a community briefing:
+## Verification
 
 ```bash
-curl -X POST http://localhost:8080/agent/community-briefing
+python scripts/security_scan.py
+ruff check src tests scripts
+pytest -q
 ```
 
-## Tests
+The suite covers policy, idempotency, monitor detection/deduplication/clearing, API behavior, source minimization, model-note safety, aggregate privacy, deterministic attention ranking, and operational impact metrics.
 
-```bash
-pytest
-```
+## Bonus and provenance
 
-The suite covers policy decisions, idempotency, storage, API behavior, autonomous monitoring, silent-risk clearing, support notes, privacy-minimized Supabase mapping, deterministic model-note safety, and aggregate community-context privacy.
+- AWS Builder Center bonus-post draft: [`docs/AWS_BUILDER_BLOG_DRAFT.md`](docs/AWS_BUILDER_BLOG_DRAFT.md)
+- Reproducible evaluation: [`docs/EVALUATION.md`](docs/EVALUATION.md)
+- Demo script: [`docs/DEMO_SCRIPT.md`](docs/DEMO_SCRIPT.md)
 
-## Bonus AWS Builder post
-
-A ready-to-publish draft for the hackathon bonus is in [`docs/AWS_BUILDER_BLOG_DRAFT.md`](docs/AWS_BUILDER_BLOG_DRAFT.md).
-
-## Hackathon provenance
-
-This repository is the new hackathon agent implementation. The existing Escola Lendária platform provides real-world community context and, when configured, a read-only source of learner progress. Pre-existing platform code is not represented as newly created hackathon work.
+This repository is the new hackathon agent implementation. The existing Escola Lendária platform supplies real community context and an optional read-only progress source; pre-existing platform code is not represented as newly built hackathon work.
 
 ## License
 
