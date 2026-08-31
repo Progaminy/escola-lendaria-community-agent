@@ -9,6 +9,7 @@ from fastapi.responses import HTMLResponse
 
 from .agent import build_community_briefing, process_event
 from .db import init_db
+from .impact import impact_metrics_data
 from .monitor import (
     autonomous_monitor_loop,
     monitoring_runs_data,
@@ -28,6 +29,7 @@ from .service import (
     support_notes_data,
 )
 from .supabase_source import source_status_data, sync_from_supabase
+from .triage import attention_plan_data
 from .ui import DASHBOARD_HTML
 
 
@@ -50,7 +52,7 @@ async def lifespan(_: FastAPI):
 
 app = FastAPI(
     title="Escola Lendária Community Agent",
-    version="0.2.0",
+    version="0.3.0",
     description="Good Neighbor AI agent built with Strands Agents SDK.",
     lifespan=lifespan,
 )
@@ -66,13 +68,16 @@ def health() -> dict:
     return {
         "ok": True,
         "agent": "escola-lendaria-community-agent",
-        "version": "0.2.0",
+        "version": "0.3.0",
         "framework": "Strands Agents SDK",
         "human_in_the_loop": True,
         "offline_capable": True,
         "community_briefing": True,
+        "deterministic_attention_plan": True,
+        "operational_impact_metrics": True,
         "support_note_guardrail": True,
-        "autonomous_monitoring": os.getenv("MONITOR_ENABLED", "true").lower() in {"1", "true", "yes", "on"},
+        "autonomous_monitoring": os.getenv("MONITOR_ENABLED", "true").lower()
+        in {"1", "true", "yes", "on"},
         "monitor_interval_seconds": max(60, int(os.getenv("MONITOR_INTERVAL_SECONDS", "900"))),
         "data_source": source_status_data(),
     }
@@ -86,6 +91,16 @@ def stats() -> dict:
 @app.get("/digest")
 def digest() -> dict:
     return community_digest_data()
+
+
+@app.get("/attention-plan")
+def attention_plan(limit: int = 12) -> dict:
+    return attention_plan_data(limit=limit)
+
+
+@app.get("/impact")
+def impact() -> dict:
+    return impact_metrics_data()
 
 
 @app.post("/agent/community-briefing")
