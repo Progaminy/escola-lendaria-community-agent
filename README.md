@@ -2,7 +2,7 @@
 
 **Good Neighbor AI for schools: detect silent learner risk early, coordinate support, and keep consequential decisions human-controlled.**
 
-Built for the **Agents for Humans Hackathon 2026** with **Strands Agents SDK + Amazon Bedrock**, with an **Amazon Bedrock AgentCore runtime adapter** and a privacy-minimized read-only connection to the real Escola Lendária learner-progress source.
+Built for the **Agents for Humans Hackathon 2026** with **Strands Agents SDK + Amazon Bedrock**, an **Amazon Bedrock AgentCore runtime adapter**, and a privacy-minimized read-only connection to the real Escola Lendária learner-progress source.
 
 > **One agent, many learners, proactive support, human judgment where it matters.**
 
@@ -16,11 +16,11 @@ A normal chatbot waits for a message. **Community Agent watches the community as
 
 1. **Observes privacy-minimized learner activity** from local events or the read-only Escola Lendária Supabase source.
 2. **Runs autonomous community scans** to detect silent inactivity and unresolved repeated failures.
-3. **Applies deterministic safety guardrails** before any model reasoning.
-4. **Uses Strands + Amazon Bedrock** for contextual reasoning and constrained tool use.
-5. **Creates and prioritizes human follow-ups** when judgment is required.
-6. **Deduplicates continuing conditions** so staff are not flooded with repeated alerts.
-7. **Clears resolved conditions** when the underlying evidence disappears.
+3. **Persists risk conditions** across scans, deduplicates continuing conditions, and clears them when evidence changes.
+4. **Applies deterministic safety guardrails** before any model reasoning.
+5. **Uses Strands + Amazon Bedrock** for bounded case-level and community-level reasoning.
+6. **Creates and prioritizes human follow-ups** when judgment is required.
+7. **Validates model-authored support notes deterministically** before persistence.
 8. **Records an audit trail** of monitoring, decisions, notes, escalation, and human resolution.
 
 ## Why this is agentic
@@ -29,7 +29,7 @@ This is not a request/response chatbot. The core loop runs even when no learner 
 
 - **Autonomous:** the monitor scans the learner population on a schedule.
 - **Stateful:** conditions persist across runs and clear when evidence changes.
-- **Tool-using:** Strands can retrieve learner context, inspect open follow-ups, and write bounded support notes.
+- **Tool-using:** Strands can retrieve privacy-safe community context, inspect factual case context, inspect human follow-ups, and write bounded advisory notes.
 - **Goal-directed:** the objective is to reduce silent learner risk while minimizing unnecessary staff interruptions.
 - **Human-aware:** consequential actions are escalated instead of executed autonomously.
 - **Resilient:** if Bedrock is temporarily unavailable, deterministic monitoring continues in policy-fallback mode.
@@ -42,9 +42,24 @@ After starting the app, open `http://localhost:8080` and:
 2. Send a **repeated_failure** event — see a risk decision and human follow-up.
 3. Send a **payment_confirmation** event — see the agent refuse autonomous execution and route it to a person.
 4. Resolve the follow-up — see the resolution enter the audit trail.
-5. Open **Recent agent decisions** and **Audit trail** — inspect the full chain of evidence and action.
+5. Call `POST /agent/community-briefing` — inspect privacy-safe community-level reasoning.
+6. Open **Recent agent decisions** and **Audit trail** — inspect the full chain of evidence and action.
 
-For the full judging map, see [`JUDGES_GUIDE.md`](JUDGES_GUIDE.md). For the video flow, see [`docs/DEMO_SCRIPT.md`](docs/DEMO_SCRIPT.md).
+For the full judging map, see [`JUDGES_GUIDE.md`](JUDGES_GUIDE.md). For a reproducible evaluation matrix, see [`docs/EVALUATION.md`](docs/EVALUATION.md). For the video flow, see [`docs/DEMO_SCRIPT.md`](docs/DEMO_SCRIPT.md).
+
+## Public live judge demo
+
+Visual live view:
+
+`https://uvypcuixxrjikjaduvyo.supabase.co/functions/v1/community-agent-demo`
+
+Structured verification:
+
+`https://uvypcuixxrjikjaduvyo.supabase.co/functions/v1/community-agent-demo?format=json`
+
+The public endpoint performs a fresh, **read-only** scan against privacy-minimized Escola Lendária progress data. It returns temporary aliases and aggregate risk evidence only. It does not render learner names, raw learner IDs, contacts, PINs, chats, private notes, or payment information.
+
+The Edge Function source is versioned in [`supabase/functions/community-agent-demo/index.ts`](supabase/functions/community-agent-demo/index.ts).
 
 ## Good Neighbor impact
 
@@ -117,15 +132,31 @@ Community Agent intentionally cannot autonomously confirm or execute:
 
 These cases are routed to a human attention queue with an owner role and urgency. The model-facing tool surface is deliberately smaller than the application surface.
 
+## Two-layer tool safety
+
+Safety is enforced in code, not only in the prompt.
+
+1. **Deterministic policy first:** hard escalation rules run before model reasoning and cannot be downgraded by Strands.
+2. **Deterministic support-note validator:** model-authored notes are rejected if they are empty, oversized, target an unknown learner, or try to encode a consequential action such as confirming payment, unlocking course access, deleting an account, punishment, or legal/medical decisions.
+
+See [`src/community_agent/safety.py`](src/community_agent/safety.py) and [`tests/test_safety.py`](tests/test_safety.py).
+
 ## Strands tools
 
 The Strands agent can use only:
 
-- `get_learner_context`
-- `list_open_followups`
-- `record_support_note`
+- `get_community_overview` — aggregate-only community context with no learner identities;
+- `get_learner_context` — factual case context;
+- `list_open_followups` — open human work queue;
+- `record_support_note` — bounded advisory support note with deterministic validation.
 
-It can reason about a case and record a support note. It cannot change access, confirm payment, discipline a learner, delete an account, or execute another consequential action.
+There is no Strands tool for payment confirmation, course-access changes, discipline, enrollment decisions, account deletion, medical/legal decisions, or safeguarding decisions.
+
+### Community-level reasoning
+
+`get_community_overview` is implemented in [`src/community_agent/community_context.py`](src/community_agent/community_context.py). It exposes counts, active monitoring categories, event mix, decision mix, and follow-up workload while intentionally excluding learner names, learner IDs, event details, private notes, contacts, PINs, chats, and payment information.
+
+`POST /agent/community-briefing` uses this aggregate context to create a short operational briefing in Strands mode. In policy mode or during a Bedrock failure, it still returns the deterministic aggregate overview.
 
 ## Architecture
 
@@ -167,6 +198,7 @@ See [`ARCHITECTURE.md`](ARCHITECTURE.md) and [`docs/architecture.png`](docs/arch
 GET  /health
 GET  /stats
 GET  /digest
+POST /agent/community-briefing
 POST /events
 GET  /events
 GET  /decisions
@@ -220,13 +252,23 @@ export COMMUNITY_AGENT_MODE=strands
 PYTHONPATH=src uvicorn community_agent.api:app --host 0.0.0.0 --port 8080
 ```
 
+Generate a community briefing:
+
+```bash
+curl -X POST http://localhost:8080/agent/community-briefing
+```
+
 ## Tests
 
 ```bash
 pytest
 ```
 
-The suite covers policy decisions, idempotency, storage, API behavior, autonomous monitoring, silent-risk clearing, support notes, and privacy-minimized Supabase mapping.
+The suite covers policy decisions, idempotency, storage, API behavior, autonomous monitoring, silent-risk clearing, support notes, privacy-minimized Supabase mapping, deterministic model-note safety, and aggregate community-context privacy.
+
+## Bonus AWS Builder post
+
+A ready-to-publish draft for the hackathon bonus is in [`docs/AWS_BUILDER_BLOG_DRAFT.md`](docs/AWS_BUILDER_BLOG_DRAFT.md).
 
 ## Hackathon provenance
 
