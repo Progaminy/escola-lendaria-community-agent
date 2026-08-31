@@ -61,7 +61,6 @@ def _build_strands_agent():
         get_community_overview,
         get_impact_metrics,
         get_learner_context,
-        list_open_followups,
         record_support_note,
     )
 
@@ -76,7 +75,6 @@ def _build_strands_agent():
             get_attention_plan,
             get_impact_metrics,
             get_learner_context,
-            list_open_followups,
             record_support_note,
         ],
     )
@@ -86,7 +84,7 @@ def _parse_agent_json(raw: str) -> dict[str, Any]:
     text = raw.strip()
     if text.startswith("```"):
         lines = text.splitlines()
-        if lines and lines[0].startswith("```"):  # json or plain fenced block
+        if lines and lines[0].startswith("```"):
             lines = lines[1:]
         if lines and lines[-1].strip() == "```":
             lines = lines[:-1]
@@ -125,11 +123,7 @@ Return only concise JSON with summary, recommended_support, and rationale.
 
 
 def build_community_briefing() -> dict[str, Any]:
-    """Create a privacy-minimized Strands briefing over deterministic evidence.
-
-    The priority ordering and impact metrics are computed without an LLM. The briefing form of
-    the attention plan strips stable learner/follow-up/event identifiers before model reasoning.
-    """
+    """Create a privacy-minimized Strands briefing over deterministic evidence."""
     overview = community_overview_data()
     attention_plan = attention_plan_for_agent_data()
     impact = impact_metrics_data()
@@ -152,9 +146,7 @@ def build_community_briefing() -> dict[str, Any]:
                     for item in attention_plan["items"][:3]
                 ],
                 "staff_actions": ["Review the highest-ranked open follow-ups first."],
-                "rationale": (
-                    "Monitoring and prioritization remain usable without cloud model access."
-                ),
+                "rationale": "Monitoring and prioritization remain usable without cloud access.",
             },
         }
 
@@ -163,11 +155,10 @@ def build_community_briefing() -> dict[str, Any]:
         prompt = """
 Create a short operational briefing for school staff.
 First use get_community_overview, then get_attention_plan, then get_impact_metrics.
-Treat the attention-plan scores as fixed deterministic evidence. The attention-plan tool already
-uses temporary case aliases; do not seek or expose stable learner identifiers. Use impact metrics
-only as operational evidence, not as proof of improved learning outcomes. Do not resolve
-follow-ups. Do not make any payment, enrollment, discipline, access, medical, legal, or
-safeguarding decision.
+Treat attention-plan scores as fixed deterministic evidence. The plan uses temporary case aliases;
+do not seek or expose stable learner identifiers. Use impact metrics only as operational evidence,
+not as proof of improved learning outcomes. Do not resolve follow-ups. Do not make payment,
+enrollment, discipline, access, medical, legal, or safeguarding decisions.
 Return only JSON with: summary, priorities (array), staff_actions (array), evidence (array),
 rationale.
 """.strip()
