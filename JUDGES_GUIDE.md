@@ -6,17 +6,26 @@ This guide maps the project directly to the **Agents for Humans Hackathon** judg
 
 **What to inspect**
 
-- `src/community_agent/agent.py` — Strands/Bedrock event reasoning path.
+- `src/community_agent/agent.py` — Strands/Bedrock event reasoning plus privacy-safe community briefing.
 - `src/community_agent/tools.py` — deliberately constrained model-facing tools.
+- `src/community_agent/community_context.py` — aggregate-only school context for community-scale reasoning.
+- `src/community_agent/safety.py` — deterministic validator for model-authored advisory notes.
 - `src/community_agent/monitor.py` — autonomous community monitoring, persistent conditions, deduplication, and clearing.
 - `src/community_agent/policy.py` — deterministic guardrails and human escalation boundary.
 - `src/community_agent/supabase_source.py` — privacy-minimized read-only Escola Lendária source adapter.
 - `src/community_agent/agentcore_runtime.py` — Amazon Bedrock AgentCore runtime adapter.
-- `tests/` — policy, monitoring, API, storage, idempotency, and source-mapping coverage.
+- `tests/` — policy, monitoring, API, storage, idempotency, source mapping, privacy, and tool-safety coverage.
 
 **Why it is non-trivial**
 
 The agent is both event-driven and time-driven. It can detect a learner who never asks for help, persist that condition across monitoring runs, avoid duplicate alerts, clear the condition when evidence changes, and combine deterministic safety rules with Strands contextual reasoning.
+
+Strands now operates at two levels:
+
+1. **case-level reasoning** — factual learner context after deterministic policy has run;
+2. **community-level reasoning** — aggregate-only operational context that intentionally contains no learner identities or private content.
+
+The model-facing support-note tool also has an independent deterministic validator. Safety therefore does not depend only on the prompt being followed.
 
 ## 2. Design
 
@@ -34,6 +43,14 @@ The interface exposes one coherent workflow:
 8. complete audit trail.
 
 The product is intentionally designed around **exception handling** rather than making staff manage another chat interface.
+
+A community briefing is also available at:
+
+```text
+POST /agent/community-briefing
+```
+
+In Strands mode it creates a privacy-safe operational briefing. In policy mode or during cloud failure it still returns the deterministic aggregate overview.
 
 ## 3. Potential Impact
 
@@ -54,6 +71,22 @@ A conventional assistant waits for a prompt from one user. Community Agent watch
 The system also treats **not acting** as an important agent capability: consequential actions are blocked and routed to people instead of being executed merely because a model can call a tool.
 
 ## 5. Presentation
+
+### Public live judge view
+
+Open:
+
+`https://uvypcuixxrjikjaduvyo.supabase.co/functions/v1/community-agent-demo`
+
+The page performs a live, read-only scan against privacy-minimized Escola Lendária progress data. It shows anonymous risk evidence, current aggregate metrics, architecture, and explicit safety invariants.
+
+For machine-verifiable output, append:
+
+`?format=json`
+
+That response contains aggregate metrics and anonymous aliases only — no learner names, raw IDs, contacts, PINs, chats, notes, or payment information.
+
+### Video
 
 Recommended video order:
 
@@ -94,9 +127,28 @@ pytest
 
 ## Safety properties to verify
 
-Try a `payment_confirmation` event. The expected behavior is escalation to a human, not autonomous execution.
+### Consequential event boundary
 
-The Strands tool surface is limited to learner context retrieval, open-follow-up listing, and support-note recording. This separation ensures that model reasoning cannot directly perform payments, access changes, discipline, deletion, or other consequential actions.
+Try a `payment_confirmation` event. Expected behavior: escalation to a human, not autonomous execution.
+
+### Tool surface
+
+The Strands tools are:
+
+- `get_community_overview` — aggregate-only community context;
+- `get_learner_context` — factual case context;
+- `list_open_followups` — human work queue visibility;
+- `record_support_note` — advisory note only, with independent deterministic validation.
+
+There is no tool for payment confirmation, access changes, discipline, deletion, enrollment decisions, medical/legal decisions, or safeguarding decisions.
+
+### Note guardrail
+
+`tests/test_safety.py` demonstrates that a model-authored note such as “confirm payment and unlock the course” is rejected before persistence, while a bounded educational support note is allowed.
+
+### Aggregate privacy
+
+`tests/test_community_context.py` verifies that the community overview contains no learner names or learner IDs.
 
 ## Architecture evidence
 
