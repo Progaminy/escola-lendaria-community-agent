@@ -177,7 +177,7 @@ rationale.
             "impact": impact,
             "briefing": _parse_agent_json(str(agent(prompt))),
         }
-    except Exception as exc:  # fail-safe: deterministic evidence survives cloud failure
+    except Exception as exc:  # noqa: BLE001 - intentional fail-safe boundary
         return {
             "ok": True,
             "agent_mode": "policy-fallback",
