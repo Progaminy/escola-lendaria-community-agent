@@ -5,6 +5,7 @@ from strands import tool
 from .community_context import community_overview_data
 from .safety import record_safe_support_note_data
 from .service import get_learner_context_data, list_open_followups_data
+from .triage import attention_plan_data
 
 
 @tool
@@ -26,6 +27,19 @@ def get_community_overview() -> dict:
     payment information, and event details.
     """
     return community_overview_data()
+
+
+@tool
+def get_attention_plan(limit: int = 12) -> dict:
+    """Return an explainable deterministic ordering of open human work.
+
+    The score is computed from urgency, active monitoring risk, and waiting time.
+    Strands may summarize this ordering but cannot change scores or resolve cases.
+
+    Args:
+        limit: Maximum number of open follow-ups to return (1-50).
+    """
+    return attention_plan_data(limit=limit)
 
 
 @tool
