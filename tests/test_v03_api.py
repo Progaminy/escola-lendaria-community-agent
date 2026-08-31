@@ -21,14 +21,15 @@ def test_v03_endpoints_expose_deterministic_evidence_in_policy_mode(tmp_path: Pa
         conn.execute(
             """
             INSERT INTO followups
-            (learner_id, reason, urgency, owner_role, created_at)
+            (learner_id, reason, urgency, owner_role, created_at, event_id)
             VALUES ('L-API-3', 'Review repeated difficulty', 'high', 'teacher',
-                    '2026-08-31 08:00:00')
+                    '2026-08-31 08:00:00', 'evt-api-3')
             """
         )
 
     client = TestClient(app)
 
+    # Human dashboard/API keeps internal identifiers so an authorized person can resolve work.
     plan = client.get("/attention-plan").json()
     assert plan["count"] == 1
     assert plan["items"][0]["learner_id"] == "L-API-3"
@@ -39,8 +40,14 @@ def test_v03_endpoints_expose_deterministic_evidence_in_policy_mode(tmp_path: Pa
     assert impact["open_human_followups"] == 1
     assert "not a causal" in impact["measurement_scope"]
 
+    # Community briefing gets the same ranking evidence without stable identifiers.
     briefing = client.post("/agent/community-briefing").json()
     assert briefing["ok"] is True
     assert briefing["agent_mode"] == "policy"
     assert briefing["attention_plan"]["count"] == 1
     assert "impact" in briefing
+    serialized_plan = repr(briefing["attention_plan"])
+    assert "L-API-3" not in serialized_plan
+    assert "evt-api-3" not in serialized_plan
+    assert "learner_id" not in serialized_plan
+    assert "event_id" not in serialized_plan
