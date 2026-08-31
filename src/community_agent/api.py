@@ -30,7 +30,7 @@ from .service import (
 )
 from .supabase_source import source_status_data, sync_from_supabase
 from .triage import attention_plan_data
-from .ui import DASHBOARD_HTML
+from .ui_v2 import DASHBOARD_HTML
 
 
 @asynccontextmanager
