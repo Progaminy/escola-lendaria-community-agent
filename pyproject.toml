@@ -1,6 +1,6 @@
 [project]
 name = "escola-lendaria-community-agent"
-version = "0.1.0"
+version = "0.3.0"
 description = "A Strands-powered Good Neighbor agent for school communities."
 requires-python = ">=3.10"
 dependencies = [
