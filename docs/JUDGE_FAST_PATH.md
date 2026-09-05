@@ -57,7 +57,7 @@ Evidence:
 - Autonomous monitoring with persistence, deduplication, and clearing.
 - Deterministic attention ranking separate from the LLM.
 - Independent validator for model-authored support notes.
-- CI with secret scanning, compile check, Ruff, and pytest.
+- CI with secret scanning, compile check, Ruff, pytest, and a live HTTP end-to-end smoke test.
 
 Key files:
 - `src/community_agent/agent.py`
@@ -67,6 +67,7 @@ Key files:
 - `src/community_agent/policy.py`
 - `src/community_agent/safety.py`
 - `src/community_agent/agentcore_runtime.py`
+- `scripts/judge_smoke_test.py`
 
 ### 2. Design
 
@@ -131,12 +132,34 @@ export COMMUNITY_AGENT_MODE=strands
 PYTHONPATH=src uvicorn community_agent.api:app --host 0.0.0.0 --port 8080
 ```
 
+## Automated end-to-end judge proof
+
+With the app running locally, execute:
+
+```bash
+python scripts/judge_smoke_test.py
+```
+
+The verifier checks the live HTTP product path for:
+
+- health + Strands identification;
+- autonomous monitoring;
+- deterministic priority and `why_now` evidence;
+- payment confirmation being escalated instead of executed;
+- temporary aliases and removal of stable IDs from model-facing community triage;
+- policy / Strands / policy-fallback continuity;
+- correct operational-impact scope;
+- audit-trail evidence.
+
+GitHub Actions now runs the same smoke test after the normal security, compile, lint, and pytest stages. See [`docs/VERIFICATION_REPORT.md`](VERIFICATION_REPORT.md) for the evidence map.
+
 Automated checks:
 
 ```bash
 python scripts/security_scan.py
 ruff check src tests scripts
 pytest -q
+python scripts/judge_smoke_test.py
 ```
 
 ## Safety boundary in one sentence
