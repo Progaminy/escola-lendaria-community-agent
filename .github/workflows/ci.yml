@@ -24,3 +24,16 @@ jobs:
         run: ruff check src tests scripts
       - name: Tests
         run: pytest -q
+      - name: End-to-end judge smoke test
+        env:
+          COMMUNITY_AGENT_MODE: policy
+          COMMUNITY_AGENT_DB: /tmp/community-agent-judge.db
+          MONITOR_ENABLED: "false"
+        run: |
+          PYTHONPATH=src python -m community_agent.seed_demo
+          PYTHONPATH=src uvicorn community_agent.api:app --host 127.0.0.1 --port 8080 \
+            >/tmp/community-agent-judge.log 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid"' EXIT
+          sleep 2
+          python scripts/judge_smoke_test.py
