@@ -6,6 +6,15 @@ Built for the **Agents for Humans Hackathon 2026** with **Strands Agents SDK + A
 
 > **One agent, many learners, one prioritized human queue.**
 
+## Judge quick links
+
+- **Live judge demo:** https://uvypcuixxrjikjaduvyo.supabase.co/functions/v1/community-agent-demo
+- **Structured live verification:** https://uvypcuixxrjikjaduvyo.supabase.co/functions/v1/community-agent-demo?format=json
+- **90-second judge path:** [`docs/JUDGE_FAST_PATH.md`](docs/JUDGE_FAST_PATH.md)
+- **Reproducible verification report:** [`docs/VERIFICATION_REPORT.md`](docs/VERIFICATION_REPORT.md)
+- **Architecture diagram:** [`docs/architecture.png`](docs/architecture.png)
+- **Full judging-criteria map:** [`JUDGES_GUIDE.md`](JUDGES_GUIDE.md)
+
 ## The specific problem
 
 Small schools cannot continuously watch every learner. The learner most likely to be missed is often the one who never opens a support chat: they quietly stop returning, repeat the same failure, or accumulate warning signals while limited staff attention is elsewhere.
@@ -118,7 +127,7 @@ Run the app and open `http://localhost:8080`:
 4. Send a `payment_confirmation` event and verify that it becomes human work rather than an executed action.
 5. Resolve a follow-up and watch the **operational evidence + audit trail** change.
 
-For a deeper verification path see [`JUDGES_GUIDE.md`](JUDGES_GUIDE.md) and [`docs/EVALUATION.md`](docs/EVALUATION.md).
+For a deeper verification path see [`docs/JUDGE_FAST_PATH.md`](docs/JUDGE_FAST_PATH.md), [`docs/VERIFICATION_REPORT.md`](docs/VERIFICATION_REPORT.md), [`JUDGES_GUIDE.md`](JUDGES_GUIDE.md), and [`docs/EVALUATION.md`](docs/EVALUATION.md).
 
 ## Architecture
 
@@ -205,16 +214,28 @@ PYTHONPATH=src uvicorn community_agent.api:app --host 0.0.0.0 --port 8080
 
 ## Verification
 
+Static/unit/integration checks:
+
 ```bash
 python scripts/security_scan.py
 ruff check src tests scripts
 pytest -q
 ```
 
-The suite covers policy, idempotency, monitor detection/deduplication/clearing, API behavior, source minimization, model-note safety, aggregate privacy, identifier-free model triage, deterministic attention ranking, and operational impact metrics.
+End-to-end judge verification against a running local service:
+
+```bash
+python scripts/judge_smoke_test.py
+```
+
+The smoke verifier checks the live HTTP product path for autonomous monitoring, deterministic priority evidence, consequential-action escalation, identifier-minimized model context, operational-impact scope, persisted decisions, and audit records. GitHub Actions runs this verifier after the normal security, compile, lint, and pytest stages.
+
+The test suite covers policy, idempotency, monitor detection/deduplication/clearing, API behavior, source minimization, model-note safety, aggregate privacy, identifier-free model triage, deterministic attention ranking, and operational impact metrics.
 
 ## Bonus and provenance
 
+- Judge fast path: [`docs/JUDGE_FAST_PATH.md`](docs/JUDGE_FAST_PATH.md)
+- Verification report: [`docs/VERIFICATION_REPORT.md`](docs/VERIFICATION_REPORT.md)
 - AWS Builder Center bonus-post draft: [`docs/AWS_BUILDER_BLOG_DRAFT.md`](docs/AWS_BUILDER_BLOG_DRAFT.md)
 - Reproducible evaluation: [`docs/EVALUATION.md`](docs/EVALUATION.md)
 - Impact measurement plan: [`docs/IMPACT_MEASUREMENT.md`](docs/IMPACT_MEASUREMENT.md)
