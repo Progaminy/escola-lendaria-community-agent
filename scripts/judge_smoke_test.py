@@ -101,7 +101,10 @@ def main() -> int:
         "model-facing community attention plan excludes stable internal identifiers",
     )
     _check(
-        all(str(item.get("case_alias", "")).startswith("priority-case-") for item in model_plan.get("items", [])),
+        all(
+            str(item.get("case_alias", "")).startswith("priority-case-")
+            for item in model_plan.get("items", [])
+        ),
         "model-facing cases use temporary priority aliases",
     )
 
@@ -115,9 +118,28 @@ def main() -> int:
         "operational evidence records at least one completed monitoring run",
     )
 
+    events = _request("/events?limit=100")
+    _check(
+        any(item.get("event_id") == event_id for item in events.get("items", [])),
+        "event store contains the unique smoke-test event",
+    )
+
+    decisions = _request("/decisions?limit=100")
+    matching_decisions = [
+        item for item in decisions.get("items", []) if item.get("event_id") == event_id
+    ]
+    _check(len(matching_decisions) == 1, "decision store contains the smoke-test decision")
+    _check(
+        int(matching_decisions[0].get("human_action_needed", 0)) == 1,
+        "persisted decision records mandatory human action",
+    )
+
     audit = _request("/audit?limit=100")
-    audit_text = json.dumps(audit, sort_keys=True)
-    _check(event_id in audit_text, "audit trail contains the smoke-test decision path")
+    action_types = {str(item.get("action_type")) for item in audit.get("items", [])}
+    _check(
+        {"event_received", "policy_decision", "create_human_followup"}.issubset(action_types),
+        "audit trail records reception, policy decision, and human follow-up creation",
+    )
 
     print("\nALL JUDGE SMOKE CHECKS PASSED")
     return 0
