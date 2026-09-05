@@ -19,7 +19,7 @@ def _request(path: str, *, method: str = "GET", body: dict[str, Any] | None = No
         headers["Content-Type"] = "application/json"
     request = Request(f"{BASE_URL}{path}", data=data, headers=headers, method=method)
     try:
-        with urlopen(request, timeout=15) as response:  # noqa: S310 - local judge endpoint
+        with urlopen(request, timeout=15) as response:
             return json.loads(response.read().decode("utf-8"))
     except HTTPError as exc:
         detail = exc.read().decode("utf-8", errors="replace")
